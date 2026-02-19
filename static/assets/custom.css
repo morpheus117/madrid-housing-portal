@@ -1,0 +1,83 @@
+/* Madrid Housing Market Portal — global CSS overrides */
+
+/* Dark dropdown via dcc.Dropdown */
+.Select-control {
+    background-color: #161b22 !important;
+    border: 1px solid #30363d !important;
+    color: #E6EDF3 !important;
+    border-radius: 6px !important;
+}
+.Select-value-label { color: #E6EDF3 !important; }
+.Select-placeholder { color: #8B949E !important; }
+.Select-arrow { border-top-color: #8B949E !important; }
+.Select-menu-outer {
+    background-color: #161b22 !important;
+    border: 1px solid #30363d !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4) !important;
+    z-index: 9999 !important;
+}
+.Select-option { background-color: #161b22 !important; color: #E6EDF3 !important; }
+.Select-option:hover,
+.Select-option.is-focused { background-color: #21262d !important; }
+.Select-option.is-selected { background-color: #1f3048 !important; }
+
+/* Tabs */
+.nav-tabs { border-bottom: 1px solid #30363d !important; margin-bottom: 16px; }
+.nav-tabs .nav-link {
+    color: #8B949E !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: color 0.15s;
+}
+.nav-tabs .nav-link:hover { color: #E6EDF3 !important; }
+.nav-tabs .nav-link.active {
+    color: #4FC3F7 !important;
+    background-color: transparent !important;
+    border-bottom: 2px solid #4FC3F7 !important;
+}
+
+/* DataTable */
+.dash-spreadsheet-container .dash-spreadsheet-inner th {
+    background-color: #21262d !important;
+    color: #E6EDF3 !important;
+}
+.dash-spreadsheet-container .dash-spreadsheet-inner td {
+    background-color: #161b22 !important;
+    color: #E6EDF3 !important;
+    border-color: #30363d !important;
+}
+.dash-filter { background-color: #161b22 !important; color: #E6EDF3 !important; }
+.dash-filter input { color: #E6EDF3 !important; }
+
+/* Slider */
+.rc-slider-rail { background-color: #30363d !important; }
+.rc-slider-track { background-color: #4FC3F7 !important; }
+.rc-slider-handle {
+    border-color: #4FC3F7 !important;
+    background-color: #0d1117 !important;
+    box-shadow: 0 0 0 2px #4FC3F7 !important;
+}
+.rc-slider-tooltip-inner {
+    background-color: #4FC3F7 !important;
+    color: #0d1117 !important;
+    font-weight: 600;
+}
+
+/* Badge */
+.badge.bg-success { background-color: #238636 !important; }
+
+/* Alert */
+.alert-info {
+    background-color: #1f3048 !important;
+    border-color: #4FC3F7 !important;
+    color: #E6EDF3 !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0d1117; }
+::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #8B949E; }

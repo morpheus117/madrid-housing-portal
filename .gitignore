@@ -1,0 +1,66 @@
+# ── Python ─────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ── Virtual environments ────────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.env.local
+
+# ── Environment / secrets ───────────────────────────────────────────────────────
+.env
+*.env
+!.env.example
+
+# ── Database ────────────────────────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+test_*.db
+
+# ── Logs ────────────────────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── IDE ─────────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# ── Testing ─────────────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ── GeoJSON cache (downloaded at runtime) ──────────────────────────────────────
+static/assets/madrid_districts.geojson
+
+# ── Claude Code local settings ──────────────────────────────────────────────────
+.claude/
+
+# ── Alembic ─────────────────────────────────────────────────────────────────────
+alembic/versions/*.pyc
