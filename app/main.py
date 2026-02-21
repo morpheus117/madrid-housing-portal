@@ -49,7 +49,8 @@ def create_dash_app() -> dash.Dash:
     dash_app = dash.Dash(
         __name__,
         server=True,  # Use Dash's own Flask server
-        url_base_pathname="/dashboard/",
+        routes_pathname_prefix="/",
+        requests_pathname_prefix="/dashboard/",
         external_stylesheets=[
             dbc.themes.SLATE,
             "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
