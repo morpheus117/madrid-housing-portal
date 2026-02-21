@@ -119,42 +119,51 @@ class INEClient:
 
     def _parse_ipv(self, raw: list[dict]) -> list[dict]:
         """
-        Parse IPV table rows.  INE JSON structure (simplified):
-          [{"NK": "...", "Nombre": "...", "T3_Periodo": {...}, "Data": [...]}]
-        Each element has a list of Data points with fields:
-          Anyo, NK (quarter code), Valor
+        Parse IPV table rows.  INE JSON structure:
+          [{"COD": ..., "Nombre": "...", "Data": [...]}]
+        Each Data point has: Anyo, Fecha (epoch ms), Valor
+        Madrid series are labelled "Madrid, Comunidad de. <type>. Índice."
         """
+        from datetime import datetime, timezone
+
         results: list[dict] = []
         for series in raw:
             nombre: str = series.get("Nombre", "")
-            # Filter to Comunidad de Madrid series
-            if "Comunidad de Madrid" not in nombre and "13" not in series.get("NK", ""):
+            # Keep only Comunidad de Madrid index series (not variation series)
+            if "Madrid, Comunidad de" not in nombre:
+                continue
+            if "Índice" not in nombre:
                 continue
 
+            nombre_lower = nombre.lower()
             prop_type = "all"
-            if "nueva" in nombre.lower() or "new" in nombre.lower():
+            if "nueva" in nombre_lower:
                 prop_type = "new"
-            elif "usada" in nombre.lower() or "second" in nombre.lower():
+            elif "segunda" in nombre_lower:
                 prop_type = "second_hand"
 
             for point in series.get("Data", []):
                 try:
-                    year = int(point.get("Anyo", 0))
-                    # NK period like "T4" or "4T" → quarter 4
-                    nk = str(point.get("NK", ""))
-                    quarter = self._parse_quarter(nk)
                     value = point.get("Valor")
-                    if year and quarter and value is not None:
-                        results.append(
-                            {
-                                "year": year,
-                                "quarter": quarter,
-                                "index_value": float(value),
-                                "property_type": prop_type,
-                                "annual_variation_pct": None,
-                                "quarterly_variation_pct": None,
-                            }
-                        )
+                    if value is None:
+                        continue
+                    # Derive year and quarter from Fecha (epoch milliseconds)
+                    fecha_ms = point.get("Fecha")
+                    if fecha_ms is None:
+                        continue
+                    dt = datetime.fromtimestamp(fecha_ms / 1000, tz=timezone.utc)
+                    year = dt.year
+                    quarter = (dt.month - 1) // 3 + 1
+                    results.append(
+                        {
+                            "year": year,
+                            "quarter": quarter,
+                            "index_value": float(value),
+                            "property_type": prop_type,
+                            "annual_variation_pct": None,
+                            "quarterly_variation_pct": None,
+                        }
+                    )
                 except (ValueError, TypeError):
                     continue
         return results
