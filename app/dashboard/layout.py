@@ -468,6 +468,131 @@ def forecast_tab() -> html.Div:
     )
 
 
+def data_management_tab() -> html.Div:
+    def source_card(
+        title: str,
+        description: str,
+        btn_id: str,
+        btn_color: str = "primary",
+        disabled: bool = False,
+        note: str = "",
+    ) -> dbc.Col:
+        return dbc.Col(
+            html.Div(
+                [
+                    html.Div(
+                        title,
+                        style={
+                            "fontSize": "13px",
+                            "fontWeight": "600",
+                            "color": COLORS["text"],
+                            "marginBottom": "6px",
+                        },
+                    ),
+                    html.Div(
+                        description,
+                        style={
+                            "fontSize": "11px",
+                            "color": COLORS["muted"],
+                            "marginBottom": "12px",
+                            "minHeight": "32px",
+                        },
+                    ),
+                    dbc.Button(
+                        "Load" if not disabled else "Unavailable",
+                        id=btn_id,
+                        color=btn_color,
+                        size="sm",
+                        disabled=disabled,
+                        style={"width": "100%"},
+                    ),
+                    html.Div(
+                        note,
+                        style={
+                            "fontSize": "10px",
+                            "color": COLORS["muted"],
+                            "marginTop": "6px",
+                            "fontStyle": "italic",
+                        },
+                    ) if note else html.Div(),
+                ],
+                style={
+                    **CARD_STYLE,
+                    "height": "100%",
+                    "borderTop": f"3px solid {COLORS['primary'] if not disabled else COLORS['border']}",
+                },
+            ),
+            md=True,
+        )
+
+    return html.Div(
+        [
+            # Status alert area
+            html.Div(id="data-load-status", style={"marginBottom": "16px"}),
+
+            # Source buttons
+            html.Div(
+                [
+                    html.H6(
+                        "Manual Data Load",
+                        style={"color": COLORS["text"], "marginBottom": "16px"},
+                    ),
+                    dbc.Row(
+                        [
+                            source_card(
+                                "INE — Housing Price Index",
+                                "Quarterly IPV data for Madrid from the National Statistics Institute.",
+                                "btn-load-ine-ipv",
+                                btn_color="primary",
+                            ),
+                            source_card(
+                                "INE — Mortgage Stats",
+                                "Monthly mortgage statistics for Madrid province from INE.",
+                                "btn-load-ine-mortgages",
+                                btn_color="primary",
+                            ),
+                            source_card(
+                                "Full Refresh",
+                                "Runs all available sources: districts, INE IPV, INE Mortgages, and GeoJSON.",
+                                "btn-load-full",
+                                btn_color="warning",
+                            ),
+                            source_card(
+                                "Catastro",
+                                "Urban property data from the Spanish Cadastre (public API).",
+                                "btn-load-catastro",
+                                disabled=True,
+                                note="No live pipeline integration yet.",
+                            ),
+                            source_card(
+                                "Idealista",
+                                "Sale and rental listing prices from Idealista.",
+                                "btn-load-idealista",
+                                disabled=True,
+                                note="API credentials required.",
+                            ),
+                        ],
+                        className="g-3",
+                    ),
+                ],
+                style=CARD_STYLE,
+            ),
+
+            # Fetch log
+            html.Div(
+                [
+                    html.H6(
+                        "Data Fetch Log — last 20 runs",
+                        style={"color": COLORS["text"], "marginBottom": "12px"},
+                    ),
+                    html.Div(id="data-fetch-log-table"),
+                ],
+                style={**CARD_STYLE, "marginTop": "16px"},
+            ),
+        ]
+    )
+
+
 def mortgage_tab() -> html.Div:
     return html.Div(
         [
@@ -540,6 +665,7 @@ def create_layout() -> html.Div:
                             dbc.Tab(rental_tab(), label="Rental Market", tab_id="tab-rental"),
                             dbc.Tab(forecast_tab(), label="Forecasting", tab_id="tab-forecast"),
                             dbc.Tab(mortgage_tab(), label="Mortgage Market", tab_id="tab-mortgage"),
+                            dbc.Tab(data_management_tab(), label="Data Management", tab_id="tab-data"),
                         ],
                         id="main-tabs",
                         active_tab="tab-overview",

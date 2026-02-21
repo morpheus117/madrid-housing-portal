@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 
 import dash_bootstrap_components as dbc
-from dash import Input, Output, callback, dash_table, html
+from dash import Input, Output, State, callback, ctx, dash_table, html, no_update
 from loguru import logger
 
 from app.dashboard.charts import (
@@ -27,6 +27,10 @@ from app.dashboard.charts import (
     price_yield_scatter,
     rental_yield_chart,
 )
+from sqlalchemy import desc
+
+from app.database import SessionLocal
+from app.models.housing import DataFetchLog
 from app.services.analytics import AnalyticsService
 from app.services.forecasting import ForecastingService
 
@@ -485,3 +489,164 @@ def _affordability_panel(aff: dict) -> html.Div:
         _stat_row("Yrs Income to Buy", f"{aff.get('years_of_income_to_buy', 0):.1f}"),
     ]
     return html.Div(rows)
+
+
+# ── Data Management ────────────────────────────────────────────────────────────
+
+_LOG_STATUS_COLORS = {
+    "success": COLORS["green"],
+    "error": COLORS["secondary"],
+    "skipped": COLORS["accent"],
+}
+
+_TH_STYLE = {
+    "backgroundColor": "#21262d",
+    "color": COLORS["text"],
+    "fontWeight": "600",
+    "fontSize": "11px",
+    "padding": "8px 12px",
+    "textAlign": "left",
+    "border": f"1px solid {COLORS['border']}",
+    "textTransform": "uppercase",
+    "letterSpacing": "0.05em",
+}
+
+_TD_STYLE = {
+    "backgroundColor": COLORS["card"],
+    "color": COLORS["text"],
+    "fontSize": "12px",
+    "padding": "8px 12px",
+    "border": f"1px solid {COLORS['border']}",
+    "verticalAlign": "top",
+}
+
+
+def _build_fetch_log_table() -> html.Div:
+    try:
+        with SessionLocal() as db:
+            logs = (
+                db.query(DataFetchLog)
+                .order_by(desc(DataFetchLog.started_at))
+                .limit(20)
+                .all()
+            )
+        if not logs:
+            return html.P(
+                "No fetch logs yet. Click a Load button to trigger a data pull.",
+                style={"color": COLORS["muted"], "fontSize": "13px"},
+            )
+
+        headers = ["Source", "Endpoint", "Status", "Records", "Error", "Started At"]
+        rows = []
+        for log in logs:
+            status_color = _LOG_STATUS_COLORS.get(log.status, COLORS["muted"])
+            rows.append(
+                html.Tr(
+                    [
+                        html.Td(log.source or "—", style=_TD_STYLE),
+                        html.Td(log.endpoint or "—", style=_TD_STYLE),
+                        html.Td(
+                            html.Span(
+                                log.status,
+                                style={"color": status_color, "fontWeight": "600"},
+                            ),
+                            style=_TD_STYLE,
+                        ),
+                        html.Td(str(log.records_fetched or 0), style=_TD_STYLE),
+                        html.Td(
+                            log.error_message or "—",
+                            style={**_TD_STYLE, "color": COLORS["muted"], "maxWidth": "300px", "wordBreak": "break-word"},
+                        ),
+                        html.Td(
+                            log.started_at.strftime("%Y-%m-%d %H:%M:%S") if log.started_at else "—",
+                            style={**_TD_STYLE, "whiteSpace": "nowrap"},
+                        ),
+                    ]
+                )
+            )
+
+        return html.Table(
+            [
+                html.Thead(
+                    html.Tr([html.Th(h, style=_TH_STYLE) for h in headers])
+                ),
+                html.Tbody(rows),
+            ],
+            style={"width": "100%", "borderCollapse": "collapse"},
+        )
+    except Exception as exc:
+        logger.error(f"Failed to build fetch log table: {exc}")
+        return html.P(
+            f"Error loading log: {exc}",
+            style={"color": COLORS["secondary"], "fontSize": "13px"},
+        )
+
+
+@callback(
+    Output("data-load-status", "children"),
+    Output("data-fetch-log-table", "children"),
+    Input("btn-load-ine-ipv", "n_clicks"),
+    Input("btn-load-ine-mortgages", "n_clicks"),
+    Input("btn-load-full", "n_clicks"),
+    Input("interval-refresh", "n_intervals"),
+    prevent_initial_call=True,
+)
+def handle_data_load(n_ipv, n_mortgages, n_full, n_intervals):
+    from app.data.pipeline import DataPipeline
+
+    triggered = ctx.triggered_id
+    status_component = no_update
+
+    if triggered == "btn-load-ine-ipv":
+        try:
+            records = DataPipeline().update_ine_ipv()
+            status_component = dbc.Alert(
+                f"INE Housing Price Index loaded successfully — {records} record(s) upserted.",
+                color="success",
+                dismissable=True,
+                duration=10000,
+            )
+        except Exception as exc:
+            logger.error(f"Manual INE IPV load failed: {exc}")
+            status_component = dbc.Alert(
+                f"INE IPV load failed: {exc}",
+                color="danger",
+                dismissable=True,
+            )
+
+    elif triggered == "btn-load-ine-mortgages":
+        try:
+            records = DataPipeline().update_ine_mortgages()
+            status_component = dbc.Alert(
+                f"INE Mortgage Stats loaded successfully — {records} record(s) upserted.",
+                color="success",
+                dismissable=True,
+                duration=10000,
+            )
+        except Exception as exc:
+            logger.error(f"Manual INE Mortgages load failed: {exc}")
+            status_component = dbc.Alert(
+                f"INE Mortgages load failed: {exc}",
+                color="danger",
+                dismissable=True,
+            )
+
+    elif triggered == "btn-load-full":
+        try:
+            results = DataPipeline().run_full_update()
+            summary = ", ".join(f"{k}: {v}" for k, v in results.items())
+            status_component = dbc.Alert(
+                f"Full refresh complete — {summary}.",
+                color="success",
+                dismissable=True,
+                duration=15000,
+            )
+        except Exception as exc:
+            logger.error(f"Manual full refresh failed: {exc}")
+            status_component = dbc.Alert(
+                f"Full refresh failed: {exc}",
+                color="danger",
+                dismissable=True,
+            )
+
+    return status_component, _build_fetch_log_table()
