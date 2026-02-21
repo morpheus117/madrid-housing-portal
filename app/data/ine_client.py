@@ -35,7 +35,7 @@ class INEClient:
     # ── Table IDs ──────────────────────────────────────────────────────────────
     IPV_GENERAL_TABLE = "25171"       # IPV general quarterly index
     IPV_VARIATION_TABLE = "25174"     # IPV annual / quarterly variation
-    MORTGAGE_MADRID_TABLE = "18862"   # EH mortgages by province (Madrid=28)
+    MORTGAGE_MADRID_TABLE = "76317"   # HPT mortgages by province (Viviendas, Madrid)
 
     def __init__(self) -> None:
         self._session = requests.Session()
@@ -173,34 +173,61 @@ class INEClient:
         return self._parse_ipv(raw)  # structure identical; Valor = variation %
 
     def _parse_mortgages(self, raw: list[dict]) -> list[dict]:
-        """Parse EH mortgage table for Madrid (province code 28)."""
-        results: list[dict] = []
+        """Parse HPT mortgage table for Madrid province (Viviendas / housing only).
+
+        Series names follow the pattern:
+          'Viviendas. Número de hipotecas. Madrid. Base nueva. Mensual. '
+          'Viviendas. Importe de hipotecas. Madrid. Base nueva. Mensual. '
+        Importe is expressed in thousands of euros by INE.
+        """
+        from collections import defaultdict
+
+        # Accumulate count and total amount per (year, month) before inserting,
+        # because both columns are NOT NULL in the DB model.
+        by_period: dict[tuple, dict] = defaultdict(dict)
+
         for series in raw:
             nombre: str = series.get("Nombre", "")
-            # Only Madrid province (28)
-            if "Madrid" not in nombre:
+            # Housing (Viviendas) mortgages for Madrid province only
+            if "Madrid" not in nombre or "iviendas" not in nombre:
                 continue
-            # Only total / number of mortgages series
-            if "número" not in nombre.lower() and "number" not in nombre.lower():
-                if "importe" not in nombre.lower():
-                    continue
 
-            is_count = "número" in nombre.lower() or "number" in nombre.lower()
+            nombre_lower = nombre.lower()
+            is_count = "número" in nombre_lower
+            is_amount = "importe" in nombre_lower
+
+            if not is_count and not is_amount:
+                continue
 
             for point in series.get("Data", []):
                 try:
                     year = int(point.get("Anyo", 0))
                     month = int(point.get("FK_Periodo", 1))
                     value = point.get("Valor")
-                    if year and month and value is not None:
-                        entry = {"year": year, "month": month}
-                        if is_count:
-                            entry["num_mortgages"] = int(float(value))
-                        else:
-                            entry["avg_amount_eur"] = float(value)
-                        results.append(entry)
+                    if not year or not month or value is None:
+                        continue
+                    key = (year, month)
+                    if is_count:
+                        by_period[key]["num_mortgages"] = int(float(value))
+                    else:
+                        # INE importe is in thousands of euros
+                        by_period[key]["total_amount_keur"] = float(value)
                 except (ValueError, TypeError):
                     continue
+
+        results = []
+        for (year, month), vals in by_period.items():
+            num = vals.get("num_mortgages")
+            total_keur = vals.get("total_amount_keur")
+            if num is None or total_keur is None:
+                continue
+            avg_eur = (total_keur * 1000 / num) if num > 0 else 0.0
+            results.append({
+                "year": year,
+                "month": month,
+                "num_mortgages": num,
+                "avg_amount_eur": avg_eur,
+            })
         return results
 
     @staticmethod
